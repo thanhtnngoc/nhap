@@ -155,17 +155,17 @@ document.addEventListener('paste', e => {
 });
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadImage(fileInput.files[0]); });
 
-function loadImage(file) {
-  const reader = new FileReader();
-  reader.onload = ev => {
-    imageBase64 = ev.target.result.split(',')[1];
-    previewImg.src = ev.target.result;
-    previewImg.style.display = 'block';
-    dropHint.style.display = 'none';
-    clearImgBtn.style.display = '';
-  };
-  reader.readAsDataURL(file);
-}
+// function loadImage(file) {
+//   const reader = new FileReader();
+//   reader.onload = ev => {
+//     imageBase64 = ev.target.result.split(',')[1];
+//     previewImg.src = ev.target.result;
+//     previewImg.style.display = 'block';
+//     dropHint.style.display = 'none';
+//     clearImgBtn.style.display = '';
+//   };
+//   reader.readAsDataURL(file);
+// }
 
 async function doConvert() {
   const text = document.getElementById('inputText').value.trim();
