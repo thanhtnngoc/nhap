@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Language Learning App</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f4f4f2;height:100vh;overflow:hidden}
+.grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;padding:8px;height:100vh}
+.panel{border:1px solid #ddd;border-radius:12px;background:#fff;overflow:hidden;display:flex;flex-direction:column}
+.panel-half{flex:1;display:flex;flex-direction:column;padding:10px;border-bottom:1px solid #eee}
+.panel-half:last-child{border-bottom:none}
+.panel-label{font-size:11px;color:#888;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+textarea{width:100%;background:#f8f8f6;border:1px solid #e0e0de;border-radius:8px;padding:8px;font-size:13px;color:#222;font-family:inherit;resize:none;flex:1;min-height:60px}
+textarea:focus{outline:none;border-color:#999}
+.drop-zone{flex:1;border:1.5px dashed #ccc;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;background:#fafaf8;min-height:70px}
+.drop-zone.drag-over{border-color:#4a90d9;background:#e8f0fb}
+.drop-zone img{max-width:100%;max-height:90px;object-fit:contain}
+.drop-hint{font-size:12px;color:#aaa;text-align:center}
+.btn{padding:6px 14px;border-radius:8px;border:1px solid #ccc;background:transparent;color:#333;font-size:13px;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn:hover{background:#f0f0ee}
+.btn-primary{background:#222;color:#fff;border-color:#222}
+.btn-primary:hover{background:#444}
+.btn-icon{padding:5px 7px;font-size:14px;line-height:1}
+.row-btns{display:flex;gap:6px;margin-top:6px;align-items:center;flex-wrap:wrap}
+.converted-text{font-size:15px;font-weight:500;color:#111;line-height:1.7;flex:1;overflow-y:auto;user-select:text;cursor:text;padding:4px 0}
+.sub-split{flex:1;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.sub-row{flex:1;display:flex;flex-direction:column;min-height:0}
+.sub-label{font-size:11px;color:#888;font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.sub-content{flex:1;font-size:13px;color:#555;background:#f8f8f6;border-radius:8px;padding:7px 9px;overflow-y:auto;line-height:1.6}
+.word-list{display:flex;flex-direction:column;gap:6px;overflow-y:auto;flex:1}
+.word-group{border:1px solid #eee;border-radius:8px;padding:8px 10px;background:#fafaf8}
+.word-group-title{font-size:11px;color:#aaa;margin-bottom:5px;font-style:italic}
+.word-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f0f0ee}
+.word-item:last-child{border-bottom:none}
+.word-text{font-size:13px;font-weight:600;color:#222;min-width:80px}
+.word-phonetic{font-size:12px;color:#777;flex:1;font-style:italic}
+.word-meaning{font-size:12px;color:#555;max-width:100px;text-align:right}
+.diary-list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1}
+.diary-entry{border:1px solid #eee;border-radius:8px;padding:8px 10px;background:#fafaf8}
+.diary-date{font-size:11px;color:#aaa;margin-bottom:3px}
+.diary-text{font-size:13px;color:#111;line-height:1.5;font-weight:500}
+.diary-phonetic{font-size:12px;color:#777;font-style:italic;margin-top:2px}
+.diary-meaning{font-size:12px;color:#555;margin-top:1px}
+.loading-dot{display:inline-block;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:.2}50%{opacity:1}}
+.empty-state{font-size:12px;color:#bbb;text-align:center;padding:20px}
+input[type=file]{display:none}
+.section-header{padding:8px 10px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.section-title{font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div class="grid">
+
+<!-- TOP LEFT -->
+<div class="panel">
+  <div class="panel-half" style="flex:1.1">
+    <div class="panel-label">Nhập văn bản</div>
+    <textarea id="inputText" rows="4" placeholder="Nhập câu tiếng Anh tại đây..."></textarea>
+  </div>
+  <div class="panel-half" style="flex:.9;border-bottom:none">
+    <div class="panel-label">Kéo thẻ / dán ảnh</div>
+    <div class="drop-zone" id="dropZone">
+      <div id="dropHint" class="drop-hint">
+        <div style="font-size:20px;margin-bottom:4px">📷</div>
+        <div>Kéo ảnh vào đây hoặc</div>
+        <label for="fileInput" style="cursor:pointer;color:#4a90d9;font-size:12px;display:block;margin-top:4px">chọn từ máy tính</label>
+      </div>
+      <img id="previewImg" style="display:none;max-width:100%;max-height:90px;object-fit:contain"/>
+    </div>
+    <input type="file" id="fileInput" accept="image/*"/>
+    <div class="row-btns">
+      <button class="btn btn-primary" onclick="doConvert()" id="convertBtn">Convert ↗</button>
+      <button class="btn" onclick="clearImage()" id="clearImgBtn" style="display:none">Xóa ảnh</button>
+      <span id="convertStatus" style="font-size:12px;color:#888"></span>
+    </div>
+  </div>
+</div>
+
+<!-- TOP RIGHT -->
+<div class="panel">
+  <div class="panel-half" style="flex:1.2">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span class="panel-label" style="margin-bottom:0">Câu đã convert</span>
+      <button class="btn btn-icon" onclick="speakText()" title="Nghe lại">🔊</button>
+    </div>
+    <div class="converted-text" id="convertedText" onmouseup="onTextSelect()">
+      <span style="color:#bbb;font-size:13px">Câu convert sẽ xuất hiện ở đây...</span>
+    </div>
+  </div>
+  <div class="panel-half" style="flex:.8;border-bottom:none">
+    <div class="sub-split">
+      <div class="sub-row">
+        <div class="sub-label">Phiên âm</div>
+        <div class="sub-content" id="phoneticText">—</div>
+      </div>
+      <div class="sub-row">
+        <div class="sub-label">Dịch nghĩa</div>
+        <div class="sub-content" id="translationText">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM LEFT -->
+<div class="panel">
+  <div class="section-header">
+    <span class="section-title">Từ đã chọn</span>
+    <span style="font-size:11px;color:#bbb">Bôi đen từ ở ô trên phải</span>
+  </div>
+  <div style="padding:10px;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+    <div class="word-list" id="wordList">
+      <div class="empty-state">Chưa có từ nào được chọn</div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM RIGHT -->
+<div class="panel">
+  <div class="section-header">
+    <span class="section-title">Nhật ký</span>
+    <button class="btn" onclick="saveDiary()" style="font-size:12px;padding:4px 10px">💾 Lưu</button>
+  </div>
+  <div style="padding:10px;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+    <div class="diary-list" id="diaryList">
+      <div class="empty-state">Chưa có câu nào được lưu</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const state = { currentSentence:'', currentPhonetic:'', currentTranslation:'', wordGroups:[], diary:[] };
+let imageBase64 = null;
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const previewImg = document.getElementById('previewImg');
+const dropHint = document.getElementById('dropHint');
+const clearImgBtn = document.getElementById('clearImgBtn');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) loadImage(f);
+});
+document.addEventListener('paste', e => {
+  for (let item of e.clipboardData.items)
+    if (item.type.startsWith('image/')) { loadImage(item.getAsFile()); break; }
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadImage(fileInput.files[0]); });
+
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    imageBase64 = ev.target.result.split(',')[1];
+    previewImg.src = ev.target.result;
+    previewImg.style.display = 'block';
+    dropHint.style.display = 'none';
+    clearImgBtn.style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function doConvert() {
+  const text = document.getElementById('inputText').value.trim();
+  const btn = document.getElementById('convertBtn');
+  const status = document.getElementById('convertStatus');
+  if (!text && !imageBase64) { status.textContent = 'Nhập văn bản hoặc thêm ảnh'; return; }
+  btn.disabled = true; btn.textContent = 'Đang xử lý...'; status.textContent = '';
+  document.getElementById('convertedText').innerHTML = '<span class="loading-dot">●</span> <span class="loading-dot" style="animation-delay:.2s">●</span> <span class="loading-dot" style="animation-delay:.4s">●</span>';
+  document.getElementById('phoneticText').textContent = '...';
+  document.getElementById('translationText').textContent = '...';
+
+  let userContent = [];
+  if (imageBase64) {
+    userContent.push({ type:'image', source:{ type:'base64', media_type:'image/jpeg', data:imageBase64 } });
+    userContent.push({ type:'text', text:'Read the English text in this image. Provide: 1) extracted sentence, 2) IPA phonetic transcription, 3) Vietnamese translation.\nRespond ONLY valid JSON: {"sentence":"...","phonetic":"...","translation":"..."}' });
+  } else {
+    userContent.push({ type:'text', text:`For: "${text}"\nProvide: 1) cleaned sentence, 2) IPA phonetic, 3) Vietnamese translation.\nRespond ONLY valid JSON: {"sentence":"...","phonetic":"...","translation":"..."}` });
+  }
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000,
+        system:'Language assistant. Return ONLY valid JSON, no markdown fences.',
+        messages:[{ role:'user', content:userContent }] })
+    });
+    const data = await res.json();
+    const raw = data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
+    const p = JSON.parse(raw);
+    state.currentSentence = p.sentence;
+    state.currentPhonetic = p.phonetic;
+    state.currentTranslation = p.translation;
+    state.wordGroups.push({ sentence:p.sentence, phonetic:p.phonetic, translation:p.translation, words:[] });
+    document.getElementById('convertedText').textContent = p.sentence;
+    document.getElementById('phoneticText').textContent = p.phonetic;
+    document.getElementById('translationText').textContent = p.translation;
+    if (imageBase64) document.getElementById('inputText').value = p.sentence;
+  } catch(e) {
+    document.getElementById('convertedText').innerHTML = '<span style="color:red">Lỗi xử lý. Thử lại.</span>';
+    document.getElementById('phoneticText').textContent = '—';
+    document.getElementById('translationText').textContent = '—';
+  }
+  btn.disabled = false; btn.textContent = 'Convert ↗';
+}
+
+function speakText() {
+  if (!state.currentSentence) return;
+  const u = new SpeechSynthesisUtterance(state.currentSentence);
+  u.lang = 'en-US'; speechSynthesis.speak(u);
+}
+
+async function onTextSelect() {
+  const sel = window.getSelection();
+  const word = sel ? sel.toString().trim() : '';
+  if (!word || word.length < 2 || !state.currentSentence) return;
+  if (!state.currentSentence.toLowerCase().includes(word.toLowerCase())) return;
+  const group = state.wordGroups[state.wordGroups.length - 1];
+  if (!group) return;
+  if (group.words.find(w => w.word.toLowerCase() === word.toLowerCase())) return;
+  group.words.push({ word, phonetic:'...', meaning:'...' });
+  renderWordList();
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:300,
+        system:'Language assistant. JSON only.',
+        messages:[{ role:'user', content:`Word "${word}" in: "${state.currentSentence}"\nJSON only: {"word":"${word}","phonetic":"IPA","meaning":"Vietnamese"}` }] })
+    });
+    const data = await res.json();
+    const raw = data.content.map(i=>i.text||'').join('').replace(/```json|```/g,'').trim();
+    const p = JSON.parse(raw);
+    const wi = group.words.findIndex(w => w.word.toLowerCase() === word.toLowerCase());
+    if (wi > -1) { group.words[wi] = p; renderWordList(); }
+  } catch(e) {}
+}
+
+function renderWordList() {
+  const list = document.getElementById('wordList');
+  const groups = state.wordGroups.filter(g => g.words.length);
+  if (!groups.length) { list.innerHTML = '<div class="empty-state">Chưa có từ nào được chọn</div>'; return; }
+  list.innerHTML = groups.map(g => `
+    <div class="word-group">
+      <div class="word-group-title">📝 ${g.sentence.length > 45 ? g.sentence.slice(0,45)+'...' : g.sentence}</div>
+      ${g.words.map(w => `
+        <div class="word-item">
+          <span class="word-text">${w.word}</span>
+          <span class="word-phonetic">${w.phonetic}</span>
+          <span class="word-meaning">${w.meaning}</span>
+          <button class="btn btn-icon" onclick="speakWord('${w.word.replace(/'/g,"\\'")}')">🔊</button>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function speakWord(word) {
+  const u = new SpeechSynthesisUtterance(word);
+  u.lang = 'en-US'; speechSynthesis.speak(u);
+}
+
+function saveDiary() {
+  if (!state.currentSentence) return;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('vi-VN') + ' ' + now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+  state.diary.unshift({ date:dateStr, sentence:state.currentSentence, phonetic:state.currentPhonetic, translation:state.currentTranslation });
+  renderDiary();
+}
+
+function renderDiary() {
+  const list = document.getElementById('diaryList');
+  if (!state.diary.length) { list.innerHTML = '<div class="empty-state">Chưa có câu nào được lưu</div>'; return; }
+  list.innerHTML = state.diary.map(e => `
+    <div class="diary-entry">
+      <div class="diary-date">${e.date}</div>
+      <div class="diary-text">${e.sentence}</div>
+      <div class="diary-phonetic">${e.phonetic}</div>
+      <div class="diary-meaning">${e.translation}</div>
+    </div>`).join('');
+}
+</script>
+</body>
+</html>
